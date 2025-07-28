@@ -1,0 +1,15 @@
+.test {
+  /* 当前这些应该被转换为vh */
+  padding-top: 20px;
+  padding-bottom: 30px;
+  margin-top: 10px;
+  margin-bottom: 15px;
+  
+  /* 这些简写属性中的top/bottom值应该也要转换为vh */
+  padding: 10px 20px 30px 40px; /* top right bottom left */
+  margin: 5px 10px 15px 20px;   /* top right bottom left */
+  
+  /* 其他属性应该保持vw转换 */
+  width: 100px;
+  height: 200px;
+}

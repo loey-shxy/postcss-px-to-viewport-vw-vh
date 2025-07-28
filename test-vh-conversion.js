@@ -29,19 +29,27 @@ const options = {
   viewportUnit: 'vw',
   fontViewportUnit: 'vw',
   heightViewportUnit: 'vh',
-  heightPropList: ['height', 'min-height', 'max-height', 'padding-top', 'padding-bottom', 'margin-top', 'margin-bottom'],
+  heightPropList: [
+    'height',
+    'min-height',
+    'max-height',
+    'padding-top',
+    'padding-bottom',
+    'margin-top',
+    'margin-bottom',
+  ],
   minPixelValue: 1,
   mediaQuery: false,
-  replace: true
+  replace: true,
 };
 
 // 执行转换
 postcss([pxToViewport(options)])
   .process(css, { from: undefined })
-  .then(result => {
+  .then((result) => {
     console.log('转换结果:');
     console.log(result.css);
   })
-  .catch(err => {
+  .catch((err) => {
     console.error('转换失败:', err);
   });

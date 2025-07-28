@@ -4,6 +4,7 @@ import { OptionType, ParentExtendType, RuleType } from './types';
 import {
   blacklistedSelector,
   createPxReplace,
+  createShorthandPxReplace,
   declarationExists,
   getUnit,
   getViewportSize,
@@ -23,7 +24,18 @@ const defaults: Required<Omit<OptionType, 'exclude' | 'include'>> = {
   viewportUnit: 'vw',
   fontViewportUnit: 'vw', // vmin is more suitable.
   heightViewportUnit: 'vh',
-  heightPropList: ['height', 'min-height', 'max-height', 'padding-top', 'padding-bottom', 'margin-top', 'margin-bottom'],
+  heightPropList: [
+    'height', 
+    'line-height', 
+    'min-height', 
+    'max-height', 
+    'padding-top', 
+    'padding-bottom', 
+    'margin-top', 
+    'margin-bottom', 
+    'top', 
+    'bottom'
+  ],
   selectorBlackList: [],
   propList: ['*'],
   minPixelValue: 1,
@@ -82,12 +94,29 @@ const postcssPxToViewport = (options: OptionType) => {
               landscapeWidth = opts.landscapeWidth;
             }
 
+            let landscapeValue;
+            const isShorthandProperty = decl.prop === 'padding' || decl.prop === 'margin';
+            
+            if (isShorthandProperty) {
+              // 对于简写属性，需要特殊处理 - 但landscape模式统一使用landscapeUnit
+              const parts = decl.value.trim().split(/\s+/);
+              const newParts = parts.map(part => {
+                if (part.includes('px')) {
+                  return part.replace(pxRegex, createPxReplace(opts, opts.landscapeUnit, landscapeWidth));
+                }
+                return part;
+              });
+              landscapeValue = newParts.join(' ');
+            } else {
+              landscapeValue = decl.value.replace(
+                pxRegex,
+                createPxReplace(opts, opts.landscapeUnit, landscapeWidth),
+              );
+            }
+
             landscapeRule.append(
               decl.clone({
-                value: decl.value.replace(
-                  pxRegex,
-                  createPxReplace(opts, opts.landscapeUnit, landscapeWidth),
-                ),
+                value: landscapeValue,
               }),
             );
           });
@@ -125,28 +154,39 @@ const postcssPxToViewport = (options: OptionType) => {
             }
           }
 
-          let unit;
-          let size;
-          const { params } = rule.parent;
+          // 检查是否是需要特殊处理的简写属性
+          const isShorthandProperty = decl.prop === 'padding' || decl.prop === 'margin';
+          let value;
 
-          if (opts.landscape && params && params.indexOf('landscape') !== -1) {
-            unit = opts.landscapeUnit;
-
-            if (typeof opts.landscapeWidth === 'function') {
-              const num = opts.landscapeWidth(file);
-              if (!num) return;
-              size = num;
-            } else {
-              size = opts.landscapeWidth;
-            }
+          if (isShorthandProperty) {
+            // 使用特殊的简写属性处理函数
+            const shorthandReplacer = createShorthandPxReplace(decl.prop, opts, file);
+            value = shorthandReplacer(decl.value);
           } else {
-            unit = getUnit(decl.prop, opts);
-            const viewportSize = getViewportSize(decl.prop, opts, file);
-            if (!viewportSize) return;
-            size = viewportSize;
-          }
+            // 原有的单个属性处理逻辑
+            let unit;
+            let size;
+            const { params } = rule.parent;
 
-          const value = decl.value.replace(pxRegex, createPxReplace(opts, unit!, size));
+            if (opts.landscape && params && params.indexOf('landscape') !== -1) {
+              unit = opts.landscapeUnit;
+
+              if (typeof opts.landscapeWidth === 'function') {
+                const num = opts.landscapeWidth(file);
+                if (!num) return;
+                size = num;
+              } else {
+                size = opts.landscapeWidth;
+              }
+            } else {
+              unit = getUnit(decl.prop, opts);
+              const viewportSize = getViewportSize(decl.prop, opts, file);
+              if (!viewportSize) return;
+              size = viewportSize;
+            }
+
+            value = decl.value.replace(pxRegex, createPxReplace(opts, unit!, size));
+          }
 
           if (declarationExists((decl.parent as unknown) as ParentExtendType[], decl.prop, value))
             return;
